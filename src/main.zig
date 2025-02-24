@@ -158,34 +158,33 @@ const Evaluator = struct {
     }
 
     fn processOperation(self: *@This()) !void {
-        if (self.operation_stack.items.len != 0) {
-            const operation = self.operation_stack.pop();
+        if (self.operation_stack.pop()) |operation| {
             switch (operation) {
                 .ParenOpen => {},
                 .ParenClose => {},
                 .Add => {
-                    const b = self.output_stack.pop();
-                    const a = self.output_stack.pop();
+                    const b = self.output_stack.pop().?;
+                    const a = self.output_stack.pop().?;
                     try self.output_stack.append(a + b);
                 },
                 .Sub => {
-                    const b = self.output_stack.pop();
-                    const a = self.output_stack.pop();
+                    const b = self.output_stack.pop().?;
+                    const a = self.output_stack.pop().?;
                     try self.output_stack.append(a - b);
                 },
                 .Mul => {
-                    const b = self.output_stack.pop();
-                    const a = self.output_stack.pop();
+                    const b = self.output_stack.pop().?;
+                    const a = self.output_stack.pop().?;
                     try self.output_stack.append(a * b);
                 },
                 .Div => {
-                    const b = self.output_stack.pop();
-                    const a = self.output_stack.pop();
+                    const b = self.output_stack.pop().?;
+                    const a = self.output_stack.pop().?;
                     try self.output_stack.append(a / b);
                 },
                 .Pow => {
-                    const b = self.output_stack.pop();
-                    const a = self.output_stack.pop();
+                    const b = self.output_stack.pop().?;
+                    const a = self.output_stack.pop().?;
                     try self.output_stack.append(std.math.pow(f64, a, b));
                 },
             }
