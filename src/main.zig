@@ -204,8 +204,7 @@ pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
 
     try stdout.print("> ", .{});
-    const stdin_input = try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', 100000);
-    if (stdin_input) |input| {
+    if (try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', 100000)) |input| {
         defer allocator.free(input);
 
         const input_trimmed = std.mem.trim(u8, input, " \t\r\n");
