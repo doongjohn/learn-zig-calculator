@@ -1,3 +1,4 @@
+const builtin = @import("builtin");
 const std = @import("std");
 
 const Evaluator = struct {
@@ -192,20 +193,31 @@ const Evaluator = struct {
     }
 };
 
-pub fn main() !void {
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .init;
-    const allocator = gpa.allocator();
-    defer std.debug.assert(gpa.deinit() == .ok);
+var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
 
-    var evaluator = Evaluator.init(allocator);
+pub fn main() !void {
+    const alloc, const is_debug = gpa: {
+        if (builtin.os.tag == .wasi) {
+            break :gpa .{ std.heap.wasm_allocator, false };
+        }
+        break :gpa switch (builtin.mode) {
+            .Debug, .ReleaseSafe => .{ debug_allocator.allocator(), true },
+            .ReleaseFast, .ReleaseSmall => .{ std.heap.smp_allocator, false },
+        };
+    };
+    defer if (is_debug) {
+        std.debug.assert(debug_allocator.deinit() == .ok);
+    };
+
+    var evaluator = Evaluator.init(alloc);
     defer evaluator.deinit();
 
     const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
 
     try stdout.print("> ", .{});
-    if (try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', 100000)) |input| {
-        defer allocator.free(input);
+    if (try stdin.readUntilDelimiterOrEofAlloc(alloc, '\n', 100000)) |input| {
+        defer alloc.free(input);
 
         const input_trimmed = std.mem.trim(u8, input, " \t\r\n");
         const result = try evaluator.evaluate(input_trimmed);
