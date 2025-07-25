@@ -212,15 +212,25 @@ pub fn main() !void {
     var evaluator = Evaluator.init(alloc);
     defer evaluator.deinit();
 
-    const stdin = std.io.getStdIn().reader();
-    const stdout = std.io.getStdOut().writer();
+    var stdin = std.fs.File.stdin().readerStreaming(&.{});
+    var stdout = std.fs.File.stdout().writerStreaming(&.{});
 
-    try stdout.print("> ", .{});
-    if (try stdin.readUntilDelimiterOrEofAlloc(alloc, '\n', 100000)) |input| {
-        defer alloc.free(input);
+    try stdout.interface.print("> ", .{});
 
-        const input_trimmed = std.mem.trim(u8, input, " \t\r\n");
-        const result = try evaluator.evaluate(input_trimmed);
-        try stdout.print("= {d}\n", .{result});
-    }
+    // Read a line from stdin.
+    stdin.interface.buffer = try alloc.alloc(u8, 1000);
+    const input = input_blk: while (true) {
+        break :input_blk stdin.interface.takeDelimiterExclusive('\n') catch |err| switch (err) {
+            error.StreamTooLong => {
+                stdin.interface.buffer = try alloc.realloc(stdin.interface.buffer, stdin.interface.buffer.len * 2);
+                continue;
+            },
+            else => &.{},
+        };
+    };
+    defer alloc.free(stdin.interface.buffer);
+
+    const input_trimmed = std.mem.trim(u8, input, " \t\r\n");
+    const result = try evaluator.evaluate(input_trimmed);
+    try stdout.interface.print("= {d}\n", .{result});
 }
